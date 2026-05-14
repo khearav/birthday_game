@@ -535,7 +535,7 @@ function drawBackground(level) {
   }
 
   // Progress bar
-  const pct = Math.min(levelProgress / 5000, 1);
+  const pct = Math.min(levelProgress / 3200, 1);
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(W * 0.2, H - 10 * SCALE, W * 0.6, 6 * SCALE);
   ctx.fillStyle = '#00ff88';
@@ -795,7 +795,7 @@ function gameLoop(ts) {
   drawBackground(currentLevel);
 
   // ---- SIDEKICKS appear only near end ----
-  const nearEnd = levelProgress >= 4500;
+  const nearEnd = levelProgress >= 2800;
   if (nearEnd) {
     sidekick1X += (playerX - 45 * SCALE - sidekick1X) * 0.06;
     sidekick2X += (playerX - 85 * SCALE - sidekick2X) * 0.04;
@@ -819,7 +819,7 @@ function gameLoop(ts) {
 
   // Auto-scroll progress
   if (!levelComplete) {
-    levelProgress += 5 * dt;
+    levelProgress += 9 * dt;
     levelTime += dt;
   }
 
@@ -896,7 +896,7 @@ function gameLoop(ts) {
   }
 
   // ---- LEVEL COMPLETE CHECK ----
-  if (!levelComplete && levelProgress >= 5000) {
+  if (!levelComplete && levelProgress >= 3200) {
     levelComplete = true;
     celebrationStarted = false;
     if (currentLevel < LEVELS.length - 1) {
