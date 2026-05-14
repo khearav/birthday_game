@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>MICHAEL'S QUEST — 51</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box;image-rendering:pixelated}
+:root{
+  --px:3px;
+  --sky:#1a1a2e;--ground:#16213e;
+  --blue:#0f3460;--accent:#e94560;--gold:#f5a623;
+  --green:#4ade80;--white:#e0e0e0;--dark:#0a0a0f;
+  --text:#00ff88;
+}
+html,body{width:100%;height:100%;overflow:hidden;background:var(--dark)}
+body{font-family:'Press Start 2P',monospace;cursor:none}
+
+/* ===== SCANLINES overlay ===== */
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:9998;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.08) 2px,rgba(0,0,0,0.08) 4px);
+}
+
+/* ===== CUSTOM CURSOR ===== */
+#cursor{
+  position:fixed;width:16px;height:16px;
+  background:var(--text);z-index:9999;pointer-events:none;
+  animation:cursorBlink 0.8s steps(1) infinite;
+  transform:translate(-4px,-4px);
+}
+@keyframes cursorBlink{50%{opacity:0}}
+@media(hover:none){#cursor{display:none}}
+
+/* ===== SCREENS ===== */
+.screen{
+  position:fixed;inset:0;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  transition:opacity 0.3s;
+}
+.screen.hidden{opacity:0;pointer-events:none}
+
+/* ===== INTRO SCREEN ===== */
+#introScreen{background:var(--dark);z-index:100}
+.crt-title{
+  text-align:center;
+  animation:flicker 4s infinite;
+}
+@keyframes flicker{0%,95%,100%{opacity:1}96%,99%{opacity:0.8}97%{opacity:0.4}}
+.big-title{
+  font-size:clamp(1.2rem,4vw,2.2rem);
+  color:var(--gold);
+  text-shadow:4px 4px 0 #7a5000, 0 0 20px var(--gold);
+  line-height:1.4;margin-bottom:24px;letter-spacing:2px;
+}
+.sub-title{
+  font-size:clamp(0.45rem,1.5vw,0.7rem);
+  color:var(--text);margin-bottom:48px;
+  line-height:2;text-align:center;
+}
+.pixel-btn{
+  font-family:'Press Start 2P',monospace;
+  font-size:clamp(0.5rem,1.8vw,0.8rem);
+  background:var(--accent);color:white;
+  border:none;padding:16px 32px;cursor:pointer;
+  box-shadow:4px 4px 0 #7a0020;
+  transition:transform 0.1s,box-shadow 0.1s;
+  animation:btnPulse 1s steps(1) infinite;
+  letter-spacing:1px;
+}
+@keyframes btnPulse{50%{background:#ff6b80}}
+.pixel-btn:active{transform:translate(4px,4px);box-shadow:0 0 0 #7a0020}
+.pixel-deco{
+  font-size:clamp(0.4rem,1.2vw,0.6rem);
+  color:rgba(255,255,255,0.3);
+  margin-top:32px;letter-spacing:1px;
+}
+
+/* ===== GAME SCREEN ===== */
+#gameScreen{background:transparent;z-index:50;padding:0}
+
+/* ===== HUD ===== */
+#hud{
+  position:fixed;top:0;left:0;right:0;
+  display:flex;justify-content:space-between;align-items:center;
+  padding:12px 16px;z-index:200;
+  background:rgba(0,0,0,0.7);
+  border-bottom:2px solid var(--text);
+}
+.hud-lives{font-size:clamp(0.6rem,2vw,0.9rem);color:var(--accent)}
+.hud-level{font-size:clamp(0.4rem,1.5vw,0.65rem);color:var(--gold);text-align:center}
+.hud-score{font-size:clamp(0.5rem,1.8vw,0.75rem);color:var(--text)}
+
+/* ===== CANVAS GAME ===== */
+#gameCanvas{
+  display:block;
+  image-rendering:pixelated;
+  image-rendering:crisp-edges;
+}
+
+/* ===== LEVEL CARD ===== */
+#levelCard{
+  position:fixed;inset:0;z-index:300;
+  background:rgba(0,0,0,0.9);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:20px;text-align:center;padding:20px;
+}
+#levelCard.hidden{display:none}
+.lc-number{font-size:clamp(0.5rem,2vw,0.8rem);color:rgba(255,255,255,0.5)}
+.lc-name{font-size:clamp(0.9rem,3vw,1.6rem);color:var(--gold);text-shadow:3px 3px 0 #7a5000;line-height:1.4}
+.lc-desc{font-size:clamp(0.4rem,1.3vw,0.6rem);color:var(--text);line-height:2;max-width:500px}
+.lc-controls{font-size:clamp(0.35rem,1.1vw,0.55rem);color:rgba(255,255,255,0.4);margin-top:8px;line-height:2}
+
+/* ===== GAME OVER / WIN ===== */
+#endScreen{
+  position:fixed;inset:0;z-index:400;
+  background:rgba(0,0,0,0.95);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:24px;text-align:center;padding:20px;
+}
+#endScreen.hidden{display:none}
+.end-title{font-size:clamp(1rem,4vw,2rem);text-shadow:4px 4px 0 currentColor;line-height:1.4}
+.end-msg{font-size:clamp(0.4rem,1.3vw,0.65rem);color:var(--white);line-height:2.2;max-width:500px}
+
+/* ===== MOBILE CONTROLS ===== */
+#mobileControls{
+  position:fixed;bottom:0;left:0;right:0;
+  display:none;
+  justify-content:space-between;align-items:flex-end;
+  padding:16px 24px 24px;z-index:250;
+  pointer-events:none;
+}
+@media(hover:none),(pointer:coarse){#mobileControls{display:flex}}
+.mob-btn{
+  font-family:'Press Start 2P',monospace;
+  font-size:1.3rem;background:rgba(255,255,255,0.15);
+  border:2px solid rgba(255,255,255,0.3);
+  color:white;width:60px;height:60px;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:4px;pointer-events:all;
+  user-select:none;-webkit-user-select:none;
+  active:background:rgba(255,255,255,0.3);
+}
+.mob-btn:active{background:rgba(255,255,255,0.35)}
+.mob-dpad{display:flex;flex-direction:column;gap:4px;align-items:center}
+.mob-dpad-row{display:flex;gap:4px}
+
+/* ===== PIXEL SPRITES CSS ===== */
+/* Se dibujan en canvas con JS */
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+
+<!-- INTRO -->
+<div class="screen" id="introScreen">
+  <div class="crt-title">
+    <div class="big-title">MICHAEL'S<br>QUEST</div>
+    <div class="sub-title">
+      NIVEL MAX DESBLOQUEADO: 51 AÑOS<br>
+      OBJETIVO: LLEGAR A TU FIESTA<br>
+      PERSONAJES: MICHAEL · MICHAEL JR · KHEARA
+    </div>
+    <button class="pixel-btn" id="startBtn">► INICIAR MISIÓN</button>
+    <div class="pixel-deco">INSERT COIN — PRESS START</div>
+  </div>
+</div>
+
+<!-- HUD -->
+<div id="hud" style="display:none">
+  <div class="hud-lives" id="hudLives">♥ ♥ ♥</div>
+  <div class="hud-level" id="hudLevel">NIVEL 1</div>
+  <div class="hud-score" id="hudScore">0 PTS</div>
+</div>
+
+<!-- GAME CANVAS -->
+<div class="screen hidden" id="gameScreen">
+  <canvas id="gameCanvas"></canvas>
+</div>
+
+<!-- LEVEL CARD -->
+<div id="levelCard" class="hidden">
+  <div class="lc-number" id="lcNumber">NIVEL 1 / 4</div>
+  <div class="lc-name" id="lcName">CAMPAMENTO</div>
+  <div class="lc-desc" id="lcDesc">Descripción aquí</div>
+  <div class="lc-controls">
+    DESKTOP: ← → MOVER · ESPACIO SALTAR<br>
+    MÓVIL: BOTONES EN PANTALLA
+  </div>
+  <button class="pixel-btn" id="lcStartBtn">► EMPEZAR</button>
+</div>
+
+<!-- END SCREEN -->
+<div id="endScreen" class="hidden">
+  <div class="end-title" id="endTitle">GAME OVER</div>
+  <div class="end-msg" id="endMsg"></div>
+  <button class="pixel-btn" id="endBtn">► REINTENTAR</button>
+</div>
+
+<!-- MOBILE CONTROLS -->
+<div id="mobileControls">
+  <div class="mob-dpad">
+    <div class="mob-dpad-row">
+      <div class="mob-btn" id="btnLeft">◄</div>
+      <div class="mob-btn" id="btnRight">►</div>
+    </div>
+  </div>
+  <div class="mob-btn" id="btnJump" style="width:70px;height:70px;font-size:1rem">JUMP</div>
+</div>
+
+<script>
+// ===== CURSOR =====
+const cursorEl = document.getElementById('cursor');
+document.addEventListener('mousemove', e => {
+  cursorEl.style.left = e.clientX + 'px';
+  cursorEl.style.top = e.clientY + 'px';
+});
+
+// ===== LEVELS CONFIG =====
+const LEVELS = [
+  {
+    name: 'CAMPAMENTO',
+    subtitle: 'El equipo llega al bosque.',
+    desc: 'Michael lidera la expedición.\nEsquiva las fogatas antes de que se propague el fuego.',
+    bg: ['#0d1b0d','#1a3d1a','#0d1b0d'],
+    groundColor: '#2d5a1b',
+    skyColor: '#0d1b0d',
+    starColor: '#fffde7',
+    obstacle: { emoji: '🔥', label: 'FOGATA', speed: 3.5, size: 28 },
+    collectible: { emoji: '🪵', label: 'LEÑA', points: 50 },
+    bgElements: ['🌲','🌲','🌳','⛺','🌲'],
+    groundPattern: 'forest',
+    timeLimit: 25,
+  },
+  {
+    name: 'RAPPEL',
+    subtitle: 'La montaña espera.',
+    desc: 'Michael desciende la pared rocosa.\nEsquiva las rocas que caen mientras buscas el camino.',
+    bg: ['#1a0d00','#3d2010','#1a0d00'],
+    groundColor: '#5c3d1e',
+    skyColor: '#1a0d00',
+    starColor: '#ffd0a0',
+    obstacle: { emoji: '🪨', label: 'ROCA', speed: 4, size: 24 },
+    collectible: { emoji: '⛏️', label: 'PIOLET', points: 75 },
+    bgElements: ['⛰️','🏔️','⛰️','🏔️','⛰️'],
+    groundPattern: 'mountain',
+    timeLimit: 25,
+  },
+  {
+    name: 'BUCEO',
+    subtitle: 'Aguas profundas.',
+    desc: 'Michael lidera el buceo.\nNada entre los tiburones sin que te vean.',
+    bg: ['#001a33','#003366','#001a33'],
+    groundColor: '#001a33',
+    skyColor: '#003366',
+    starColor: '#a0e0ff',
+    obstacle: { emoji: '🦈', label: 'TIBURON', speed: 4.5, size: 36 },
+    collectible: { emoji: '🐠', label: 'PEZ', points: 100 },
+    bgElements: ['🪸','🐙','🪸','🐡','🪸'],
+    groundPattern: 'ocean',
+    timeLimit: 25,
+  },
+  {
+    name: 'JETSKI',
+    subtitle: 'Última etapa.',
+    desc: '¡La fiesta está cerca!\nEsquiva las olas y llega a la orilla.',
+    bg: ['#001833','#0047ab','#001833'],
+    groundColor: '#0047ab',
+    skyColor: '#001833',
+    starColor: '#ffffff',
+    obstacle: { emoji: '🌊', label: 'OLA', speed: 5, size: 32 },
+    collectible: { emoji: '⭐', label: 'ESTRELLA', points: 150 },
+    bgElements: ['🏄','🚤','🏄','⛵','🏄'],
+    groundPattern: 'water',
+    timeLimit: 25,
+  }
+];
+
+// ===== GAME STATE =====
+let lives = 3, score = 0, currentLevel = 0;
+let gameRunning = false, gameOver = false;
+let keys = {};
+let obstacles = [], collectibles = [], bgParticles = [];
+let playerX, playerY, velY = 0, onGround = false;
+let levelTime = 0, levelProgress = 0;
+let invincible = false, invTimer = 0;
+let levelComplete = false;
+let animFrame = 0;
+let lastTime = 0;
+
+// ===== CANVAS SETUP =====
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+ctx.imageSmoothingEnabled = false;
+
+let W, H, GROUND_Y, SCALE;
+
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  GROUND_Y = H * 0.72;
+  SCALE = Math.min(W, H) / 400;
+}
+window.addEventListener('resize', () => { resize(); });
+resize();
+
+// ===== PIXEL SPRITE DRAWING =====
+// Michael — rescue outfit, beard, glasses, dark hair
+function drawMichael(x, y, frame, s) {
+  const S = s || SCALE;
+  const px = Math.floor;
+  ctx.save();
+  ctx.translate(x, y);
+  // shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(-10*S, -2*S, 20*S, 4*S);
+  // legs (walk anim)
+  const legOff = Math.sin(frame * 0.3) * 4 * S;
+  ctx.fillStyle = '#1a3a6e'; // navy pants
+  ctx.fillRect(-7*S, -14*S, 6*S, 14*S + legOff);
+  ctx.fillRect(1*S, -14*S, 6*S, 14*S - legOff);
+  // boots
+  ctx.fillStyle = '#2c1a00';
+  ctx.fillRect(-8*S, -2*S, 7*S, 4*S);
+  ctx.fillRect(1*S, -2*S, 7*S, 4*S);
+  // body — rescue blue vest
+  ctx.fillStyle = '#1a5fb4';
+  ctx.fillRect(-8*S, -30*S, 16*S, 18*S);
+  // vest details
+  ctx.fillStyle = '#2a7fd4';
+  ctx.fillRect(-6*S, -28*S, 4*S, 14*S);
+  ctx.fillRect(2*S, -28*S, 4*S, 14*S);
+  // cross symbol
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(-2*S, -26*S, 4*S, 10*S);
+  ctx.fillRect(-5*S, -22*S, 10*S, 4*S);
+  // arms
+  ctx.fillStyle = '#1a5fb4';
+  const armOff = Math.sin(frame * 0.3) * 3 * S;
+  ctx.fillRect(-14*S, -30*S + armOff, 7*S, 12*S);
+  ctx.fillRect(7*S, -30*S - armOff, 7*S, 12*S);
+  // head
+  ctx.fillStyle = '#c8956c';
+  ctx.fillRect(-7*S, -46*S, 14*S, 16*S);
+  // hair dark
+  ctx.fillStyle = '#1a1a1a';
+  ctx.fillRect(-7*S, -46*S, 14*S, 5*S);
+  // glasses
+  ctx.fillStyle = '#222';
+  ctx.fillRect(-7*S, -40*S, 6*S, 4*S);
+  ctx.fillRect(1*S, -40*S, 6*S, 4*S);
+  ctx.fillStyle = 'rgba(100,200,255,0.4)';
+  ctx.fillRect(-6*S, -39*S, 4*S, 2*S);
+  ctx.fillRect(2*S, -39*S, 4*S, 2*S);
+  // beard
+  ctx.fillStyle = '#2a2a2a';
+  ctx.fillRect(-5*S, -34*S, 10*S, 5*S);
+  // helmet stripe
+  ctx.fillStyle = '#ff0000';
+  ctx.fillRect(-7*S, -46*S, 14*S, 2*S);
+  ctx.restore();
+}
+
+// Michael Jr — glasses, blonde-ish, tall teen
+function drawMichaelJr(x, y, frame, s) {
+  const S = s || SCALE;
+  ctx.save();
+  ctx.translate(x, y);
+  // shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.25)';
+  ctx.fillRect(-8*S, -2*S, 16*S, 3*S);
+  // legs
+  const legOff = Math.sin(frame * 0.3 + 1) * 4 * S;
+  ctx.fillStyle = '#4a4a6a';
+  ctx.fillRect(-5*S, -12*S, 5*S, 12*S + legOff);
+  ctx.fillRect(0, -12*S, 5*S, 12*S - legOff);
+  // shoes
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(-6*S, -2*S, 6*S, 3*S);
+  ctx.fillRect(0, -2*S, 6*S, 3*S);
+  // body
+  ctx.fillStyle = '#5b9bd5';
+  ctx.fillRect(-6*S, -26*S, 12*S, 15*S);
+  // tshirt detail
+  ctx.fillStyle = '#3a7abf';
+  ctx.fillRect(-4*S, -24*S, 8*S, 2*S);
+  // arms
+  ctx.fillStyle = '#5b9bd5';
+  ctx.fillRect(-11*S, -26*S + Math.sin(frame*0.3+1)*3*S, 5*S, 10*S);
+  ctx.fillRect(6*S, -26*S - Math.sin(frame*0.3+1)*3*S, 5*S, 10*S);
+  // head
+  ctx.fillStyle = '#d4a574';
+  ctx.fillRect(-5*S, -40*S, 10*S, 14*S);
+  // blonde hair
+  ctx.fillStyle = '#c8a84b';
+  ctx.fillRect(-6*S, -40*S, 12*S, 5*S);
+  ctx.fillRect(-6*S, -40*S, 3*S, 8*S);
+  // glasses
+  ctx.fillStyle = '#333';
+  ctx.fillRect(-5*S, -34*S, 4*S, 3*S);
+  ctx.fillRect(1*S, -34*S, 4*S, 3*S);
+  ctx.fillStyle = 'rgba(100,200,255,0.4)';
+  ctx.fillRect(-4*S, -33*S, 2*S, 1*S);
+  ctx.fillRect(2*S, -33*S, 2*S, 1*S);
+  ctx.restore();
+}
+
+// Kheara — long blonde hair, dress
+function drawKheara(x, y, frame, s) {
+  const S = s || SCALE;
+  ctx.save();
+  ctx.translate(x, y);
+  // shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.22)';
+  ctx.fillRect(-7*S, -2*S, 14*S, 3*S);
+  // dress (skirt)
+  ctx.fillStyle = '#e8a0bf';
+  ctx.fillRect(-7*S, -18*S, 14*S, 18*S);
+  // dress top
+  ctx.fillStyle = '#d4609a';
+  ctx.fillRect(-5*S, -28*S, 10*S, 12*S);
+  // arms
+  ctx.fillStyle = '#c8956c';
+  ctx.fillRect(-10*S, -28*S + Math.sin(frame*0.3+2)*3*S, 5*S, 9*S);
+  ctx.fillRect(5*S, -28*S - Math.sin(frame*0.3+2)*3*S, 5*S, 9*S);
+  // head
+  ctx.fillStyle = '#c8956c';
+  ctx.fillRect(-5*S, -42*S, 10*S, 14*S);
+  // long blonde hair
+  ctx.fillStyle = '#d4a820';
+  ctx.fillRect(-6*S, -42*S, 12*S, 5*S); // top
+  ctx.fillRect(-7*S, -42*S, 4*S, 28*S); // left side long
+  ctx.fillRect(3*S, -42*S, 4*S, 28*S);  // right side long
+  // feet
+  ctx.fillStyle = '#c8956c';
+  const fOff = Math.sin(frame * 0.3 + 2) * 3 * S;
+  ctx.fillRect(-5*S, -4*S + fOff, 4*S, 4*S);
+  ctx.fillRect(1*S, -4*S - fOff, 4*S, 4*S);
+  ctx.restore();
+}
+
+// ===== DRAW OBSTACLE =====
+function drawObstacle(obs) {
+  ctx.save();
+  ctx.font = `${obs.size * SCALE}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(obs.emoji, obs.x, obs.y);
+  ctx.restore();
+}
+
+// ===== DRAW COLLECTIBLE =====
+function drawCollectible(col) {
+  ctx.save();
+  const bob = Math.sin(animFrame * 0.08) * 4 * SCALE;
+  ctx.font = `${18 * SCALE}px serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'bottom';
+  ctx.fillText(col.emoji, col.x, col.y + bob);
+  ctx.restore();
+}
+
+// ===== DRAW BACKGROUND =====
+function drawBackground(level) {
+  const lvl = LEVELS[level];
+  // Sky gradient
+  const grd = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+  grd.addColorStop(0, lvl.bg[0]);
+  grd.addColorStop(0.5, lvl.bg[1]);
+  grd.addColorStop(1, lvl.bg[2]);
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, 0, W, GROUND_Y);
+
+  // Stars / bubbles
+  ctx.fillStyle = lvl.starColor;
+  for (let i = 0; i < 40; i++) {
+    const sx = (i * 173 + animFrame * 0.2) % W;
+    const sy = (i * 97) % (GROUND_Y * 0.8);
+    const ss = (i % 3 === 0 ? 3 : 2) * SCALE;
+    if (level === 2) { // ocean bubbles
+      ctx.beginPath();
+      ctx.arc(sx, sy + Math.sin(animFrame * 0.05 + i) * 10, ss, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(160,224,255,0.3)';
+      ctx.lineWidth = SCALE;
+      ctx.stroke();
+    } else {
+      ctx.fillRect(sx, sy + Math.sin(animFrame * 0.03 + i) * 2, ss, ss);
+    }
+  }
+
+  // Background elements scroll slow
+  ctx.font = `${clamp(28, 40, 50) * SCALE}px serif`;
+  ctx.textBaseline = 'bottom';
+  lvl.bgElements.forEach((el, i) => {
+    const bx = ((i * (W / lvl.bgElements.length)) - (levelProgress * 0.3) % W + W) % W;
+    const by = GROUND_Y - 4 * SCALE;
+    ctx.globalAlpha = 0.5;
+    ctx.fillText(el, bx, by);
+    ctx.globalAlpha = 1;
+  });
+
+  // Ground
+  if (level === 2 || level === 3) {
+    // Water pattern
+    const wGrd = ctx.createLinearGradient(0, GROUND_Y, 0, H);
+    wGrd.addColorStop(0, level === 2 ? '#004080' : '#0057cc');
+    wGrd.addColorStop(1, level === 2 ? '#001a33' : '#003080');
+    ctx.fillStyle = wGrd;
+    ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+    // Wave lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.15)';
+    ctx.lineWidth = 2 * SCALE;
+    for (let w = 0; w < 5; w++) {
+      ctx.beginPath();
+      for (let wx = 0; wx < W; wx += 4) {
+        const wy = GROUND_Y + w * 20 * SCALE + Math.sin((wx + animFrame * 2) * 0.03) * 6 * SCALE;
+        if (wx === 0) ctx.moveTo(wx, wy); else ctx.lineTo(wx, wy);
+      }
+      ctx.stroke();
+    }
+  } else {
+    const gGrd = ctx.createLinearGradient(0, GROUND_Y, 0, H);
+    gGrd.addColorStop(0, lvl.groundColor);
+    gGrd.addColorStop(1, '#000');
+    ctx.fillStyle = gGrd;
+    ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+    // ground texture pixels
+    ctx.fillStyle = 'rgba(255,255,255,0.08)';
+    for (let gx = 0; gx < W; gx += 16 * SCALE) {
+      ctx.fillRect(gx + ((animFrame * 2) % (16 * SCALE)), GROUND_Y, 8 * SCALE, 2 * SCALE);
+    }
+  }
+
+  // Progress bar
+  const pct = Math.min(levelProgress / 3000, 1);
+  ctx.fillStyle = 'rgba(0,0,0,0.5)';
+  ctx.fillRect(W * 0.2, H - 10 * SCALE, W * 0.6, 6 * SCALE);
+  ctx.fillStyle = '#00ff88';
+  ctx.fillRect(W * 0.2, H - 10 * SCALE, W * 0.6 * pct, 6 * SCALE);
+  // party icon at end
+  ctx.font = `${14 * SCALE}px serif`;
+  ctx.textAlign = 'right';
+  ctx.fillText('🎂', W * 0.8 + 10 * SCALE, H - 4 * SCALE);
+}
+
+function clamp(min, val, max) { return Math.min(max, Math.max(min, val)); }
+
+// ===== PLAYER POSITION =====
+let playerBaseY;
+let sidekick1X, sidekick2X;
+
+function initLevel(lvlIndex) {
+  obstacles = [];
+  collectibles = [];
+  bgParticles = [];
+  levelProgress = 0;
+  levelTime = 0;
+  velY = 0;
+  onGround = true;
+  levelComplete = false;
+  invincible = false;
+  invTimer = 0;
+  animFrame = 0;
+  playerBaseY = GROUND_Y;
+  playerX = W * 0.25;
+  playerY = playerBaseY;
+  sidekick1X = -200;
+  sidekick2X = -200;
+  obstacleTimer = 0;
+  collectibleTimer = 0;
+  score = score; // keep score across levels
+}
+
+// ===== OBSTACLE SPAWNING =====
+let obstacleTimer = 0, collectibleTimer = 0;
+const OBSTACLE_INTERVAL = 90;
+const COLLECTIBLE_INTERVAL = 150;
+
+function spawnObstacle() {
+  const lvl = LEVELS[currentLevel];
+  obstacles.push({
+    x: W + 40,
+    y: GROUND_Y,
+    emoji: lvl.obstacle.emoji,
+    size: lvl.obstacle.size,
+    speed: lvl.obstacle.speed * SCALE,
+    w: lvl.obstacle.size * SCALE * 0.8,
+    h: lvl.obstacle.size * SCALE,
+  });
+}
+
+function spawnCollectible() {
+  const lvl = LEVELS[currentLevel];
+  collectibles.push({
+    x: W + 20,
+    y: GROUND_Y - 50 * SCALE,
+    emoji: lvl.collectible.emoji,
+    points: lvl.collectible.points,
+    w: 18 * SCALE, h: 18 * SCALE,
+    speed: LEVELS[currentLevel].obstacle.speed * SCALE * 0.8,
+  });
+}
+
+// ===== PHYSICS =====
+const GRAVITY = 0.6 * SCALE;
+const JUMP_FORCE = -14 * SCALE;
+let jumped = false;
+
+function jump() {
+  if (onGround && !levelComplete) {
+    velY = JUMP_FORCE;
+    onGround = false;
+  }
+}
+
+// ===== COLLISION =====
+function rectsOverlap(ax, ay, aw, ah, bx, by, bw, bh) {
+  return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
+}
+
+// ===== HIT PLAYER =====
+function hitPlayer() {
+  if (invincible) return;
+  lives--;
+  updateHUD();
+  invincible = true;
+  invTimer = 120;
+  if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+  if (lives <= 0) {
+    showGameOver();
+  }
+}
+
+// ===== UPDATE HUD =====
+function updateHUD() {
+  const hearts = ['♥ ♥ ♥', '♥ ♥ ♡', '♥ ♡ ♡', '♡ ♡ ♡'];
+  document.getElementById('hudLives').textContent = hearts[Math.max(0, 3 - lives)];
+  document.getElementById('hudScore').textContent = score + ' PTS';
+  document.getElementById('hudLevel').textContent = 'NIVEL ' + (currentLevel + 1) + ' — ' + LEVELS[currentLevel].name;
+}
+
+// ===== GAME OVER =====
+function showGameOver() {
+  gameRunning = false;
+  const es = document.getElementById('endScreen');
+  es.classList.remove('hidden');
+  document.getElementById('endTitle').style.color = '#e94560';
+  document.getElementById('endTitle').textContent = 'GAME OVER';
+  document.getElementById('endMsg').textContent =
+    '¡El equipo necesita reagruparse!\nLa fiesta sigue esperando, Michael.\nInténtalo de nuevo.';
+  document.getElementById('endBtn').textContent = '► REINTENTAR';
+  document.getElementById('endBtn').onclick = () => {
+    es.classList.add('hidden');
+    lives = 3; score = 0; currentLevel = 0;
+    startLevel(0);
+  };
+}
+
+// ===== WIN =====
+function showWin() {
+  gameRunning = false;
+  document.getElementById('mobileControls').style.display = 'none';
+  const es = document.getElementById('endScreen');
+  es.classList.remove('hidden');
+  document.getElementById('endTitle').style.color = '#f5a623';
+  document.getElementById('endTitle').innerHTML = '🎂 FELIZ<br>CUMPLE! 🎂';
+  document.getElementById('endMsg').innerHTML =
+    '¡MISIÓN COMPLETADA!<br><br>' +
+    'Michael Jr. · Kheara · Michael<br>' +
+    'llegaron juntos a la fiesta.<br><br>' +
+    '★ ★ ★ 51 AÑOS ★ ★ ★<br><br>' +
+    'SCORE FINAL: ' + score + ' PTS';
+  document.getElementById('endBtn').textContent = '► JUGAR DE NUEVO';
+  document.getElementById('endBtn').onclick = () => {
+    es.classList.add('hidden');
+    lives = 3; score = 0; currentLevel = 0;
+    startLevel(0);
+  };
+}
+
+// ===== START LEVEL =====
+function startLevel(lvlIndex) {
+  currentLevel = lvlIndex;
+  initLevel(lvlIndex);
+  const lvl = LEVELS[lvlIndex];
+
+  document.getElementById('lcNumber').textContent = 'NIVEL ' + (lvlIndex + 1) + ' / ' + LEVELS.length;
+  document.getElementById('lcName').textContent = lvl.name;
+  document.getElementById('lcDesc').textContent = lvl.subtitle + '\n' + lvl.desc;
+
+  const lc = document.getElementById('levelCard');
+  lc.classList.remove('hidden');
+  updateHUD();
+
+  document.getElementById('lcStartBtn').onclick = () => {
+    lc.classList.add('hidden');
+    gameRunning = true;
+    requestAnimationFrame(gameLoop);
+  };
+}
+
+// ===== FIREWORK PARTICLES =====
+let fireworks = [];
+function spawnFirework(x, y) {
+  const colors = ['#f5a623','#e94560','#00ff88','#fff','#a0e0ff'];
+  for (let i = 0; i < 12; i++) {
+    fireworks.push({
+      x, y,
+      vx: (Math.random() - 0.5) * 8 * SCALE,
+      vy: (Math.random() - 1.5) * 8 * SCALE,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      life: 60,
+    });
+  }
+}
+
+// ===== CELEBRATION SCENE =====
+let celebrationTimer = 0;
+let celebrationStarted = false;
+
+function drawCelebration() {
+  celebrationTimer++;
+  // Fireworks
+  if (celebrationTimer % 20 === 0) {
+    spawnFirework(Math.random() * W, Math.random() * H * 0.5);
+  }
+  fireworks.forEach(f => {
+    f.x += f.vx; f.y += f.vy; f.vy += 0.15 * SCALE; f.life--;
+    ctx.save();
+    ctx.globalAlpha = f.life / 60;
+    ctx.fillStyle = f.color;
+    ctx.fillRect(f.x, f.y, 4 * SCALE, 4 * SCALE);
+    ctx.restore();
+  });
+  fireworks = fireworks.filter(f => f.life > 0);
+
+  // Draw characters celebrating
+  const cx = W * 0.5;
+  const cy = GROUND_Y;
+  const bounce = Math.sin(celebrationTimer * 0.15) * 10 * SCALE;
+  drawMichael(cx, cy + bounce, celebrationTimer, SCALE * 1.2);
+  drawMichaelJr(cx - 55 * SCALE, cy + Math.sin(celebrationTimer * 0.15 + 1) * 10 * SCALE, celebrationTimer, SCALE * 1.2);
+  drawKheara(cx + 55 * SCALE, cy + Math.sin(celebrationTimer * 0.15 + 2) * 10 * SCALE, celebrationTimer, SCALE * 1.2);
+
+  // Cake
+  ctx.font = `${50 * SCALE}px serif`;
+  ctx.textAlign = 'center';
+  ctx.fillText('🎂', cx, GROUND_Y - 90 * SCALE + Math.sin(celebrationTimer * 0.1) * 5 * SCALE);
+
+  // 51!
+  ctx.font = `${clamp(10, 20, 30) * SCALE}px 'Press Start 2P', monospace`;
+  ctx.fillStyle = '#f5a623';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = '#f5a623';
+  ctx.shadowBlur = 10;
+  ctx.fillText('51!', cx, GROUND_Y - 140 * SCALE);
+  ctx.shadowBlur = 0;
+
+  if (celebrationTimer > 180 && !gameOver) {
+    gameOver = true;
+    setTimeout(showWin, 500);
+  }
+}
+
+// ===== MAIN GAME LOOP =====
+function gameLoop(ts) {
+  if (!gameRunning) return;
+  animFrame++;
+  ctx.clearRect(0, 0, W, H);
+
+  if (levelComplete && celebrationStarted) {
+    // draw celebration bg
+    const grd = ctx.createLinearGradient(0, 0, 0, H);
+    grd.addColorStop(0, '#0d001a');
+    grd.addColorStop(1, '#1a0033');
+    ctx.fillStyle = grd;
+    ctx.fillRect(0, 0, W, H);
+    // ground
+    ctx.fillStyle = '#2a0050';
+    ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
+    drawCelebration();
+    requestAnimationFrame(gameLoop);
+    return;
+  }
+
+  // ---- BACKGROUND ----
+  drawBackground(currentLevel);
+
+  // ---- SIDEKICKS appear only near end ----
+  const nearEnd = levelProgress >= 2600 * SCALE;
+  if (nearEnd) {
+    sidekick1X += (playerX - 45 * SCALE - sidekick1X) * 0.06;
+    sidekick2X += (playerX - 85 * SCALE - sidekick2X) * 0.04;
+  } else {
+    sidekick1X = -200;
+    sidekick2X = -200;
+  }
+
+  // ---- PLAYER PHYSICS ----
+  if (keys['ArrowLeft'] || keys['left']) playerX -= 4 * SCALE;
+  if (keys['ArrowRight'] || keys['right']) playerX += 2.5 * SCALE;
+  playerX = Math.max(20 * SCALE, Math.min(W * 0.6, playerX));
+
+  velY += GRAVITY;
+  playerY += velY;
+  if (playerY >= playerBaseY) {
+    playerY = playerBaseY;
+    velY = 0;
+    onGround = true;
+  }
+
+  // Auto-scroll progress
+  if (!levelComplete) {
+    levelProgress += 2.5 * SCALE;
+    levelTime++;
+  }
+
+  // ---- SPAWN ----
+  obstacleTimer++;
+  collectibleTimer++;
+  const interval = Math.max(40, OBSTACLE_INTERVAL - Math.floor(levelProgress / 200));
+  if (obstacleTimer >= interval) {
+    spawnObstacle();
+    obstacleTimer = 0;
+  }
+  if (collectibleTimer >= COLLECTIBLE_INTERVAL) {
+    spawnCollectible();
+    collectibleTimer = 0;
+  }
+
+  // ---- UPDATE OBSTACLES ----
+  obstacles = obstacles.filter(obs => {
+    obs.x -= obs.speed;
+    drawObstacle(obs);
+    // Collision with player
+    if (!invincible && rectsOverlap(
+      playerX - 8 * SCALE, playerY - 44 * SCALE, 16 * SCALE, 44 * SCALE,
+      obs.x - obs.w * 0.4, obs.y - obs.h, obs.w * 0.8, obs.h * 0.8
+    )) {
+      hitPlayer();
+    }
+    return obs.x > -60;
+  });
+
+  // ---- UPDATE COLLECTIBLES ----
+  collectibles = collectibles.filter(col => {
+    col.x -= col.speed;
+    drawCollectible(col);
+    if (rectsOverlap(
+      playerX - 8 * SCALE, playerY - 44 * SCALE, 16 * SCALE, 44 * SCALE,
+      col.x - col.w / 2, col.y - col.h, col.w, col.h
+    )) {
+      score += col.points;
+      updateHUD();
+      return false;
+    }
+    return col.x > -40;
+  });
+
+  // ---- INVINCIBILITY FLASH ----
+  if (invincible) {
+    invTimer--;
+    if (invTimer <= 0) invincible = false;
+  }
+
+  // ---- DRAW CHARACTERS ----
+  const walkFrame = onGround ? animFrame : 0;
+  const alpha = invincible ? (Math.floor(animFrame / 6) % 2 === 0 ? 0.3 : 1) : 1;
+  ctx.globalAlpha = alpha;
+
+  if (nearEnd || sidekick1X > 0) {
+    drawKheara(sidekick2X, playerY, walkFrame);
+    drawMichaelJr(sidekick1X, playerY, walkFrame);
+  }
+  drawMichael(playerX, playerY, walkFrame);
+  ctx.globalAlpha = 1;
+
+  // ---- NAMES ----
+  ctx.font = `${Math.floor(6 * SCALE)}px 'Press Start 2P', monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#00ff88';
+  ctx.fillText('MICHAEL', playerX, playerY - 56 * SCALE);
+  if (nearEnd) {
+    ctx.fillStyle = '#a0c4ff';
+    ctx.fillText('JR', sidekick1X, playerY - 46 * SCALE);
+    ctx.fillStyle = '#ffb3d9';
+    ctx.fillText('KHEARA', sidekick2X, playerY - 46 * SCALE);
+  }
+
+  // ---- LEVEL COMPLETE CHECK ----
+  if (!levelComplete && levelProgress >= 3000 * SCALE) {
+    levelComplete = true;
+    celebrationStarted = false;
+    if (currentLevel < LEVELS.length - 1) {
+      // Next level
+      gameRunning = false;
+      setTimeout(() => {
+        startLevel(currentLevel + 1);
+      }, 1000);
+    } else {
+      // Final celebration
+      celebrationStarted = true;
+    }
+  }
+
+  requestAnimationFrame(gameLoop);
+}
+
+// ===== CONTROLS =====
+document.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  if ((e.key === ' ' || e.key === 'ArrowUp') && !jumped) { jump(); jumped = true; }
+  e.preventDefault();
+});
+document.addEventListener('keyup', e => {
+  keys[e.key] = false;
+  jumped = false;
+});
+
+// Mobile buttons
+document.getElementById('btnLeft').addEventListener('touchstart', e => { keys['left'] = true; e.preventDefault(); }, {passive:false});
+document.getElementById('btnLeft').addEventListener('touchend', () => { keys['left'] = false; });
+document.getElementById('btnRight').addEventListener('touchstart', e => { keys['right'] = true; e.preventDefault(); }, {passive:false});
+document.getElementById('btnRight').addEventListener('touchend', () => { keys['right'] = false; });
+document.getElementById('btnJump').addEventListener('touchstart', e => { jump(); e.preventDefault(); }, {passive:false});
+
+// ===== START BUTTON =====
+document.getElementById('startBtn').addEventListener('click', () => {
+  document.getElementById('introScreen').classList.add('hidden');
+  document.getElementById('hud').style.display = 'flex';
+  document.getElementById('gameScreen').classList.remove('hidden');
+  document.getElementById('mobileControls').style.display = '';
+  lives = 3; score = 0; currentLevel = 0;
+  startLevel(0);
+});
+</script>
+</body>
+</html>
