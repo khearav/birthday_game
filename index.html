@@ -704,6 +704,7 @@ function startLevel(lvlIndex) {
   document.getElementById('lcStartBtn').onclick = () => {
     lc.classList.add('hidden');
     gameRunning = true;
+    lastTime = 0;
     requestAnimationFrame(gameLoop);
   };
 }
