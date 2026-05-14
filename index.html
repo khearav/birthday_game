@@ -559,10 +559,15 @@ function initLevel(lvlIndex) {
   levelProgress = 0;
   levelTime = 0;
   lastTime = 0;
+  obstacleTimer = 0;
+  collectibleTimer = 0;
   velY = 0;
   onGround = true;
   levelComplete = false;
   invincible = false;
+  celebrationTimer = 0;
+  celebrationStarted = false;
+  gameOver = false;
   invTimer = 0;
   animFrame = 0;
   playerBaseY = GROUND_Y;
@@ -723,13 +728,13 @@ let celebrationTimer = 0;
 let celebrationStarted = false;
 
 function drawCelebration() {
-  celebrationTimer += dt;
+  celebrationTimer++;
   // Fireworks
-  if (Math.floor(celebrationTimer) % 20 === 0 && Math.floor(celebrationTimer) !== Math.floor(celebrationTimer - dt)) {
+  if (celebrationTimer % 20 === 0) {
     spawnFirework(Math.random() * W, Math.random() * H * 0.5);
   }
   fireworks.forEach(f => {
-    f.x += f.vx * dt; f.y += f.vy * dt; f.vy += 0.15 * dt; f.life -= dt;
+    f.x += f.vx; f.y += f.vy; f.vy += 0.15; f.life--;
     ctx.save();
     ctx.globalAlpha = f.life / 60;
     ctx.fillStyle = f.color;
@@ -761,7 +766,7 @@ function drawCelebration() {
   ctx.fillText('51!', cx, GROUND_Y - 140 * SCALE);
   ctx.shadowBlur = 0;
 
-  if (celebrationTimer > 180 && !gameOver) {
+  if (celebrationTimer > 200 && !gameOver) {
     gameOver = true;
     setTimeout(showWin, 500);
   }
@@ -770,8 +775,9 @@ function drawCelebration() {
 // ===== MAIN GAME LOOP =====
 function gameLoop(ts) {
   if (!gameRunning) return;
-  if (!lastTime) lastTime = ts;
-  const dt = Math.min((ts - lastTime) / 16.67, 2.5);
+  if (!lastTime) { lastTime = ts; }
+  const rawDt = ts - lastTime;
+  const dt = rawDt > 100 ? 1 : Math.min(rawDt / 16.67, 1.2);
   lastTime = ts;
   animFrame++;
   ctx.clearRect(0, 0, W, H);
@@ -908,6 +914,7 @@ function gameLoop(ts) {
     } else {
       // Final celebration
       celebrationStarted = true;
+      gameRunning = true;
     }
   }
 
