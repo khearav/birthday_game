@@ -229,7 +229,7 @@ const LEVELS = [
     groundColor: '#2d5a1b',
     skyColor: '#0d1b0d',
     starColor: '#fffde7',
-    obstacle: { emoji: '🔥', label: 'FOGATA', speed: 3.5, size: 28 },
+    obstacle: { emoji: '🔥', label: 'FOGATA', speed: 5.5, size: 28 },
     collectible: { emoji: '🪵', label: 'LEÑA', points: 50 },
     bgElements: ['🌲','🌲','🌳','⛺','🌲'],
     groundPattern: 'forest',
@@ -243,7 +243,7 @@ const LEVELS = [
     groundColor: '#5c3d1e',
     skyColor: '#1a0d00',
     starColor: '#ffd0a0',
-    obstacle: { emoji: '🪨', label: 'ROCA', speed: 4, size: 24 },
+    obstacle: { emoji: '🪨', label: 'ROCA', speed: 6, size: 24 },
     collectible: { emoji: '⛏️', label: 'PIOLET', points: 75 },
     bgElements: ['⛰️','🏔️','⛰️','🏔️','⛰️'],
     groundPattern: 'mountain',
@@ -257,7 +257,7 @@ const LEVELS = [
     groundColor: '#001a33',
     skyColor: '#003366',
     starColor: '#a0e0ff',
-    obstacle: { emoji: '🦈', label: 'TIBURON', speed: 4.5, size: 36 },
+    obstacle: { emoji: '🦈', label: 'TIBURON', speed: 6.5, size: 36 },
     collectible: { emoji: '🐠', label: 'PEZ', points: 100 },
     bgElements: ['🪸','🐙','🪸','🐡','🪸'],
     groundPattern: 'ocean',
@@ -271,7 +271,7 @@ const LEVELS = [
     groundColor: '#0047ab',
     skyColor: '#001833',
     starColor: '#ffffff',
-    obstacle: { emoji: '🌊', label: 'OLA', speed: 5, size: 32 },
+    obstacle: { emoji: '🌊', label: 'OLA', speed: 7.5, size: 32 },
     collectible: { emoji: '⭐', label: 'ESTRELLA', points: 150 },
     bgElements: ['🏄','🚤','🏄','⛵','🏄'],
     groundPattern: 'water',
@@ -535,7 +535,7 @@ function drawBackground(level) {
   }
 
   // Progress bar
-  const pct = Math.min(levelProgress / 3000, 1);
+  const pct = Math.min(levelProgress / 5000, 1);
   ctx.fillStyle = 'rgba(0,0,0,0.5)';
   ctx.fillRect(W * 0.2, H - 10 * SCALE, W * 0.6, 6 * SCALE);
   ctx.fillStyle = '#00ff88';
@@ -558,6 +558,7 @@ function initLevel(lvlIndex) {
   bgParticles = [];
   levelProgress = 0;
   levelTime = 0;
+  lastTime = 0;
   velY = 0;
   onGround = true;
   levelComplete = false;
@@ -576,8 +577,8 @@ function initLevel(lvlIndex) {
 
 // ===== OBSTACLE SPAWNING =====
 let obstacleTimer = 0, collectibleTimer = 0;
-const OBSTACLE_INTERVAL = 90;
-const COLLECTIBLE_INTERVAL = 150;
+const OBSTACLE_INTERVAL = 70;
+const COLLECTIBLE_INTERVAL = 120;
 
 function spawnObstacle() {
   const lvl = LEVELS[currentLevel];
@@ -605,8 +606,8 @@ function spawnCollectible() {
 }
 
 // ===== PHYSICS =====
-const GRAVITY = 0.5;
-const JUMP_FORCE = -13;
+const GRAVITY = 0.7;
+const JUMP_FORCE = -15;
 let jumped = false;
 
 function jump() {
@@ -722,13 +723,13 @@ let celebrationTimer = 0;
 let celebrationStarted = false;
 
 function drawCelebration() {
-  celebrationTimer++;
+  celebrationTimer += dt;
   // Fireworks
-  if (celebrationTimer % 20 === 0) {
+  if (Math.floor(celebrationTimer) % 20 === 0 && Math.floor(celebrationTimer) !== Math.floor(celebrationTimer - dt)) {
     spawnFirework(Math.random() * W, Math.random() * H * 0.5);
   }
   fireworks.forEach(f => {
-    f.x += f.vx; f.y += f.vy; f.vy += 0.15 * SCALE; f.life--;
+    f.x += f.vx * dt; f.y += f.vy * dt; f.vy += 0.15 * dt; f.life -= dt;
     ctx.save();
     ctx.globalAlpha = f.life / 60;
     ctx.fillStyle = f.color;
@@ -769,6 +770,9 @@ function drawCelebration() {
 // ===== MAIN GAME LOOP =====
 function gameLoop(ts) {
   if (!gameRunning) return;
+  if (!lastTime) lastTime = ts;
+  const dt = Math.min((ts - lastTime) / 16.67, 2.5);
+  lastTime = ts;
   animFrame++;
   ctx.clearRect(0, 0, W, H);
 
@@ -791,7 +795,7 @@ function gameLoop(ts) {
   drawBackground(currentLevel);
 
   // ---- SIDEKICKS appear only near end ----
-  const nearEnd = levelProgress >= 2600;
+  const nearEnd = levelProgress >= 4500;
   if (nearEnd) {
     sidekick1X += (playerX - 45 * SCALE - sidekick1X) * 0.06;
     sidekick2X += (playerX - 85 * SCALE - sidekick2X) * 0.04;
@@ -801,12 +805,12 @@ function gameLoop(ts) {
   }
 
   // ---- PLAYER PHYSICS ----
-  if (keys['ArrowLeft'] || keys['left']) playerX -= 5;
-  if (keys['ArrowRight'] || keys['right']) playerX += 4;
+  if (keys['ArrowLeft'] || keys['left']) playerX -= 7 * dt;
+  if (keys['ArrowRight'] || keys['right']) playerX += 6 * dt;
   playerX = Math.max(20 * SCALE, Math.min(W * 0.6, playerX));
 
-  velY += GRAVITY;
-  playerY += velY;
+  velY += GRAVITY * dt;
+  playerY += velY * dt;
   if (playerY >= playerBaseY) {
     playerY = playerBaseY;
     velY = 0;
@@ -815,13 +819,13 @@ function gameLoop(ts) {
 
   // Auto-scroll progress
   if (!levelComplete) {
-    levelProgress += 3;
-    levelTime++;
+    levelProgress += 5 * dt;
+    levelTime += dt;
   }
 
   // ---- SPAWN ----
-  obstacleTimer++;
-  collectibleTimer++;
+  obstacleTimer += dt;
+  collectibleTimer += dt;
   const interval = Math.max(40, OBSTACLE_INTERVAL - Math.floor(levelProgress / 200));
   if (obstacleTimer >= interval) {
     spawnObstacle();
@@ -834,7 +838,7 @@ function gameLoop(ts) {
 
   // ---- UPDATE OBSTACLES ----
   obstacles = obstacles.filter(obs => {
-    obs.x -= obs.speed;
+    obs.x -= obs.speed * dt;
     drawObstacle(obs);
     // Collision with player
     if (!invincible && rectsOverlap(
@@ -848,7 +852,7 @@ function gameLoop(ts) {
 
   // ---- UPDATE COLLECTIBLES ----
   collectibles = collectibles.filter(col => {
-    col.x -= col.speed;
+    col.x -= col.speed * dt;
     drawCollectible(col);
     if (rectsOverlap(
       playerX - 8 * SCALE, playerY - 44 * SCALE, 16 * SCALE, 44 * SCALE,
@@ -863,7 +867,7 @@ function gameLoop(ts) {
 
   // ---- INVINCIBILITY FLASH ----
   if (invincible) {
-    invTimer--;
+    invTimer -= dt;
     if (invTimer <= 0) invincible = false;
   }
 
@@ -892,7 +896,7 @@ function gameLoop(ts) {
   }
 
   // ---- LEVEL COMPLETE CHECK ----
-  if (!levelComplete && levelProgress >= 3000) {
+  if (!levelComplete && levelProgress >= 5000) {
     levelComplete = true;
     celebrationStarted = false;
     if (currentLevel < LEVELS.length - 1) {
